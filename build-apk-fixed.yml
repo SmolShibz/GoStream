@@ -12,6 +12,13 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
+      - name: Show project files
+        run: |
+          echo "Repository contents:"
+          ls -la
+          echo "Searching for Gradle settings file:"
+          find . -type f -name "settings.gradle.kts" -print
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
@@ -29,12 +36,23 @@ jobs:
           gradle-version: "8.9"
 
       - name: Build APK
-        working-directory: GoStream-CloudBuild/GoStream
-        run: gradle --no-daemon assembleDebug
+        id: build
+        shell: bash
+        run: |
+          SETTINGS_FILE="$(find . -type f -name "settings.gradle.kts" -not -path "*/.gradle/*" -print -quit)"
+          if [ -z "$SETTINGS_FILE" ]; then
+            echo "Could not find settings.gradle.kts anywhere in the repository."
+            exit 1
+          fi
+
+          PROJECT_DIR="$(dirname "$SETTINGS_FILE")"
+          echo "Building project in: $PROJECT_DIR"
+          cd "$PROJECT_DIR"
+          gradle --no-daemon assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: GoStream-debug-apk
-          path: GoStream-CloudBuild/GoStream/app/build/outputs/apk/debug/app-debug.apk
+          path: "**/app/build/outputs/apk/debug/app-debug.apk"
           if-no-files-found: error
